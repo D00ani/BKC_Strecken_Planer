@@ -630,6 +630,44 @@
     return parts;
   });
 
+  // Z: obere Gasse, schräge Gasse, untere Gasse. In der Verlängerung der
+  // schrägen Gasse steht an beiden Ecken eine Wende aus drei Pylonen, um die
+  // herum gewendet wird. Die Figur ist punktsymmetrisch.
+  register('Figuren', 'z-figur', 'Z-Figur', (fig, d) => {
+    const angle = (55 * Math.PI) / 180;        // Neigung der schrägen Gasse
+    const slope = Math.tan(angle);
+    const left = pt(5 * d.p, d.D);             // hier knickt die untere Reihe in die Schräge ab
+    const right = pt(left.x + d.D / Math.sin(angle), d.D);
+    const down = (from, length) =>
+      pt(from.x - Math.cos(angle) * length, from.y + Math.sin(angle) * length);
+    const rightEnd = down(right, 6 * d.p);
+    const center = pt((left.x + rightEnd.x) / 2, (left.y + rightEnd.y) / 2);
+    const same = (q) => q;
+    const flip = (q) => pt(2 * center.x - q.x, 2 * center.y - q.y);   // Punktspiegelung
+
+    // Die Wende setzt die rechte schräge Wand auf Höhe der oberen Reihe fort.
+    const turn = right.x + d.D / slope;
+    const turnPylons = [pt(turn, 0), pt(turn + F, 0), pt(turn + F, -F)];
+    [same, flip].forEach((place) => {
+      fig.wall([pt(0, 0), pt(6 * d.p, 0)].map(place), d.p);
+      fig.wall([pt(0, d.D), left, down(left, 6 * d.p)].map(place), d.p);
+      turnPylons.map(place).forEach((q) => fig.standing(q.x, q.y));
+    });
+
+    // Oben durch, links herum um die Wende, schräg hinunter, rechts herum um
+    // die zweite Wende und unten hinaus – alles auf den Gassenachsen.
+    const lane = d.D / 2;
+    const openingTop = pt((left.x + right.x) / 2, d.D);
+    const openingBottom = flip(openingTop);
+    const onAxis = (y) => pt(openingTop.x + (openingTop.y - y) / slope, y);
+    const clear = 1.5 * F + 1.1;               // Abstand des Bogens von der Wende
+    const loop = [pt(turn + clear, lane), pt(turn + clear, -clear), onAxis(-clear)];
+    const exit = flip(pt(-ARROW_LENGTH, lane));
+    fig.direction(-ARROW_LENGTH, lane, 6 * d.p + 0.5, lane);
+    fig.route([pt(6 * d.p + 0.9, lane)].concat(loop, [openingBottom]), 1.0);
+    fig.route([down(openingBottom, 0.4)].concat(loop.slice().reverse().map(flip), [exit]), 1.0);
+  });
+
   // Stamm links, zwei Äste rechts. Die Innenreihen liegen in der Flucht der
   // Stammreihen, davor steht eine einzelne Pylone als Spitze.
   register('Figuren', 'ypsilon', 'Ypsilon', (fig, d) => {

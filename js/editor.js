@@ -976,7 +976,7 @@
     el instanceof HTMLInputElement || el instanceof HTMLSelectElement;
 
   window.addEventListener('keydown', (e) => {
-    if (isFormField(e.target)) return;
+    if (isFormField(e.target) || document.querySelector('dialog[open]')) return;
     const ctrl = e.ctrlKey || e.metaKey;
     if (e.code === 'Space') {
       e.preventDefault();
@@ -1064,6 +1064,15 @@
   $('btn-zoom-in').addEventListener('click', () => zoomAtCenter(1.25));
   $('btn-zoom-out').addEventListener('click', () => zoomAtCenter(1 / 1.25));
   $('btn-fit').addEventListener('click', fitView);
+
+  $('btn-help').addEventListener('click', () => $('help-dialog').showModal());
+
+  // Fenster (Hilfe, App): ein Klick daneben schließt sie.
+  document.querySelectorAll('dialog').forEach((dialog) => {
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+  });
 
   $('snap-step').addEventListener('change', (e) => {
     snapStep = Number(e.target.value);
