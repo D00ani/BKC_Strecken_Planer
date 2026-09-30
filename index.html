@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kurs-Planer – Streckenplan Kart-Slalom</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="menubar">
+    <span class="app-title">Kurs-Planer</span>
+
+    <div class="tool-group">
+      <button id="btn-open" type="button" title="Gespeicherten Streckenplan öffnen (Strg/Cmd+O)">Öffnen</button>
+      <button id="btn-save" type="button" title="Streckenplan als Datei speichern (Strg/Cmd+S)">Speichern</button>
+      <button id="btn-export" type="button" title="Streckenplan als PDF speichern (DIN A4)">PDF</button>
+    </div>
+
+    <div class="tool-group">
+      <button id="btn-undo" type="button" title="Rückgängig (Strg/Cmd+Z)">↶ Zurück</button>
+      <button id="btn-redo" type="button" title="Wiederholen (Strg+Y, Cmd+Umschalt+Z)">↷ Vor</button>
+    </div>
+
+    <div class="tool-group">
+      <button id="btn-rotate-left" type="button" title="15° gegen den Uhrzeigersinn drehen (Umschalt+R)">↺ Drehen</button>
+      <button id="btn-rotate-right" type="button" title="15° im Uhrzeigersinn drehen (R)">↻ Drehen</button>
+      <button id="btn-mirror" type="button" title="Auswahl spiegeln (M)">Spiegeln</button>
+      <button id="btn-delete" type="button" title="Auswahl löschen (Entf)">Löschen</button>
+    </div>
+
+    <div class="tool-group">
+      <button id="btn-zoom-out" type="button" title="Verkleinern">−</button>
+      <span id="zoom-label" class="zoom-label">100 %</span>
+      <button id="btn-zoom-in" type="button" title="Vergrößern">+</button>
+      <button id="btn-fit" type="button" title="Ganzen Platz anzeigen">Einpassen</button>
+    </div>
+
+    <div class="tool-group">
+      <label for="snap-step">Einrasten</label>
+      <select id="snap-step">
+        <option value="0">aus</option>
+        <option value="0.1">0,10 m</option>
+        <option value="0.25" selected>0,25 m</option>
+        <option value="0.5">0,50 m</option>
+        <option value="1">1,00 m</option>
+      </select>
+      <label class="check" title="Beim Verschieben anzeigen, wenn Kanten oder Mitte in einer Flucht mit anderen Elementen liegen">
+        <input id="guides" type="checkbox" checked> Hilfslinien
+      </label>
+    </div>
+
+    <div class="tool-group">
+      <label for="field-width">Platz</label>
+      <input id="field-width" type="number" min="10" max="200" step="1" value="50" title="Breite in Metern">
+      <span>×</span>
+      <input id="field-height" type="number" min="10" max="200" step="1" value="30" title="Tiefe in Metern">
+      <span>m</span>
+    </div>
+
+    <div class="tool-group">
+      <label for="track-width">Spurbreite Kart</label>
+      <input id="track-width" type="number" min="0.8" max="1.6" step="0.05" value="1.10"
+             title="Fahrspurbreite der Figuren = Spurbreite + 40 cm. Gilt für neu platzierte Figuren.">
+      <span>m</span>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="toolbox">
+      <div id="palette"></div>
+      <p class="hint">Element auf die Arbeitsfläche ziehen – oder antippen, dann landet es in der Bildmitte.</p>
+      <p class="hint">
+        <strong>Klick</strong> wählt die ganze Figur samt Pfeilen.<br>
+        <strong>Doppelklick</strong> geht eine Ebene tiefer: erst das Teil (Gasse, Pfeil, Pylonengruppe), dann die einzelne Pylone – zum Verschieben oder Löschen.<br>
+        <strong>Rechtsklick</strong> (Touch: lange drücken) öffnet das Menü mit „Pfeile spiegeln“.
+      </p>
+      <p class="hint">Pfeile, Sperrfläche und Sperrlinie: Größe über die Griffe am Auswahlrahmen ändern.</p>
+      <p class="hint">
+        Maus: Mausrad zoomt, rechte/mittlere Taste oder Leertaste + Ziehen verschiebt die Ansicht, Ziehen auf freier Fläche wählt mehrere Elemente.<br>
+        Touch: ein Finger auf freier Fläche verschiebt, zwei Finger zoomen.
+      </p>
+    </aside>
+
+    <main class="canvas-wrap">
+      <div id="stage"></div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="status-pos">x: – &nbsp; y: –</span>
+    <span id="status-selection">Keine Auswahl</span>
+    <span id="status-count">0 Elemente</span>
+    <span id="status-message" role="status"></span>
+    <span class="status-scale">1 Kästchen = 1 m</span>
+  </footer>
+
+  <input id="file-input" class="file-input" type="file" accept=".json,application/json" tabindex="-1" aria-hidden="true">
+
+  <div id="context-menu" class="context-menu" hidden>
+    <button type="button" data-action="flip-arrows">Pfeile spiegeln</button>
+    <button type="button" data-action="delete">Löschen</button>
+  </div>
+
+  <script src="vendor/konva.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/elements.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/file.js"></script>
+</body>
+</html>
