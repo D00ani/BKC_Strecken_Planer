@@ -486,14 +486,37 @@
 
   // ---------- Gelände ----------
 
+  // Rechteck mit Beschriftung in der Mitte (options.text). Die Schrift passt
+  // sich der Fläche an: höchstens 70 % der Breite und die halbe Höhe.
+  function areaLayout(rect, size, options) {
+    rectLayout(rect, size);
+    const group = rect.getParent();
+    let label = group.findOne('.label');
+    if (!label) {
+      label = new Konva.Text({
+        name: 'label', fontFamily: 'Verdana, Arial, sans-serif', fontStyle: 'bold', fill: INK,
+        scaleX: TEXT_SCALE, scaleY: TEXT_SCALE, listening: false
+      });
+      group.add(label);
+    }
+    const text = (options.text || '').trim();
+    label.visible(Boolean(text));
+    if (!text) return;
+    label.setAttrs({ text, fontSize: 100 });
+    const widthPerMeter = label.width() * TEXT_SCALE;     // Textbreite bei 1 m Schrifthöhe
+    const height = Math.max(0.3, Math.min((0.7 * size.width) / widthPerMeter, 0.5 * size.height));
+    label.fontSize(height * 100);
+    label.offset({ x: label.width() / 2, y: label.height() / 2 });
+  }
+
   // Nicht befahrbare Fläche, z. B. Gebäude, Grünstreifen oder fehlende Platzecke
   registerSized({
     id: 'sperrflaeche', label: 'Sperrfläche', category: 'Gelände',
-    hint: 'Nicht befahrbare Fläche, z. B. Gebäude. Größe über die Griffe ändern.',
-    resize: 'both', background: true, size: { width: 6, height: 4 }
+    hint: 'Nicht befahrbare Fläche, z. B. Gebäude. Größe über die Griffe ändern, Doppelklick zum Beschriften.',
+    resize: 'both', background: true, editableText: true, size: { width: 6, height: 4 }
   }, () => new Konva.Rect({
     fill: 'rgba(120, 126, 134, 0.55)', stroke: '#5a6068', strokeWidth: 0.05
-  }), rectLayout);
+  }), areaLayout);
 
   // Grenze, die nicht überfahren werden darf, z. B. Bordstein oder Absperrung
   registerSized({

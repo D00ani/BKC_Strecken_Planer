@@ -4,14 +4,16 @@
  * HTML-Datei herunterladen.
  *
  * Per Knopfdruck installieren können nur Chrome und Edge (Windows, Mac,
- * Android). Überall sonst – vor allem auf iPad und iPhone – erlaubt der
- * Browser das nur über sein eigenes Menü; dann zeigt das Fenster die Schritte.
+ * Android). Überall sonst – vor allem in Safari auf iPad, iPhone und Mac –
+ * erlaubt der Browser das nur über sein eigenes Menü; dann zeigt das Fenster
+ * die Schritte. Die Anleitungen der anderen Geräte stehen aufklappbar darunter.
  */
 (function () {
   'use strict';
 
   const ZIP_URL = 'https://github.com/D00ani/BKC_Strecken_Planer/archive/refs/heads/main.zip';
-  // „Teilen“-Symbol von iOS, damit man es in der Leiste wiedererkennt
+  const BANNER_KEY = 'kurs-planer-install-hinweis';
+  // „Teilen“-Symbol von Safari, damit man es in der Leiste wiedererkennt
   const SHARE_ICON = '<svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true">' +
     '<path d="M12 15V3M8 7l4-4 4 4M7 10H5v11h14V10h-2" fill="none" stroke="currentColor" ' +
     'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -20,8 +22,7 @@
   const dialog = $('app-dialog');
   const installButton = $('btn-install');
   const hint = $('install-hint');
-  const steps = $('install-steps');
-  const outro = $('install-outro');
+  const banner = $('install-banner');
   const hosted = location.protocol === 'https:' || location.protocol === 'http:';
   let installPrompt = null;              // vom Browser angebotene Installation
 
@@ -40,19 +41,37 @@
     return 'other';
   }
 
-  // Anleitung für Browser, die nicht per Knopfdruck installieren lassen
+  const isMobile = () => ['ios', 'android'].includes(platform());
+
+  // Anleitungen für die Wege über das Browsermenü
   const TUTORIALS = {
     ios: {
-      intro: 'Auf iPad und iPhone legst du das Symbol in drei Schritten selbst an:',
+      title: 'iPad und iPhone (Safari)',
+      intro: 'In Safari auf iPad und iPhone legst du das Symbol so an:',
       steps: [
-        'In der Leiste des Browsers auf „Teilen“ ' + SHARE_ICON + ' tippen.',
-        'Im Menü nach unten blättern und „Zum Home-Bildschirm“ wählen.',
+        'Die Seite in Safari öffnen – nicht in der Vorschau einer anderen App.',
+        'Auf „Teilen“ ' + SHARE_ICON + ' tippen: am iPad oben rechts, am iPhone unten in der Mitte.',
+        'In der Liste nach unten blättern und „Zum Home-Bildschirm“ wählen.',
         'Oben rechts auf „Hinzufügen“ tippen.'
       ],
-      outro: 'Danach liegt der Kurs-Planer als Symbol auf dem Home-Bildschirm und startet ohne Internet.'
+      outro: 'Danach liegt der Kurs-Planer als Symbol auf dem Home-Bildschirm, öffnet sich ohne ' +
+        'Adressleiste und startet ohne Internet.'
+    },
+    safari: {
+      title: 'Mac (Safari)',
+      intro: 'In Safari am Mac kommt der Kurs-Planer so ins Dock:',
+      steps: [
+        'Die Seite in Safari öffnen.',
+        'In der Menüleiste „Ablage“ öffnen – oder in der Symbolleiste auf „Teilen“ ' + SHARE_ICON + ' klicken.',
+        '„Zum Dock hinzufügen …“ wählen.',
+        'Mit „Hinzufügen“ bestätigen.'
+      ],
+      outro: 'Danach öffnet sich der Kurs-Planer über das Symbol im Dock im eigenen Fenster. ' +
+        'Das geht ab macOS 14 (Sonoma).'
     },
     android: {
-      intro: 'Auf diesem Android-Gerät legst du das Symbol über das Browsermenü an:',
+      title: 'Android (Chrome)',
+      intro: 'Auf Android legst du das Symbol über das Browsermenü an:',
       steps: [
         'Oben rechts das Menü <b>⋮</b> öffnen.',
         '„App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen.',
@@ -60,17 +79,9 @@
       ],
       outro: 'Danach liegt der Kurs-Planer als Symbol auf dem Startbildschirm und startet ohne Internet.'
     },
-    safari: {
-      intro: 'In Safari am Mac kommt der Kurs-Planer so ins Dock:',
-      steps: [
-        'In der Menüleiste „Ablage“ öffnen.',
-        '„Zum Dock hinzufügen …“ wählen.',
-        'Mit „Hinzufügen“ bestätigen.'
-      ],
-      outro: 'Danach öffnet sich der Kurs-Planer über das Symbol im Dock im eigenen Fenster.'
-    },
     chrome: {
-      intro: 'Chrome bietet die Installation gerade nicht per Knopfdruck an. Über das Menü geht es so:',
+      title: 'Windows und Mac (Chrome)',
+      intro: 'In Chrome geht es über das Menü so:',
       steps: [
         'Oben rechts das Menü <b>⋮</b> öffnen.',
         '„Streamen, speichern und teilen“ wählen.',
@@ -79,7 +90,8 @@
       outro: 'Ist die App schon installiert, findest du sie im Startmenü bzw. im Launchpad.'
     },
     edge: {
-      intro: 'Edge bietet die Installation gerade nicht per Knopfdruck an. Über das Menü geht es so:',
+      title: 'Windows und Mac (Edge)',
+      intro: 'In Edge geht es über das Menü so:',
       steps: [
         'Oben rechts das Menü <b>…</b> öffnen.',
         '„Apps“ wählen.',
@@ -89,18 +101,38 @@
     }
   };
 
-  function show(intro, tutorial) {
-    hint.textContent = intro;
-    steps.hidden = !tutorial;
-    outro.hidden = !tutorial;
-    steps.innerHTML = '';
-    if (!tutorial) return;
+  // Schritte und Schlusssatz einer Anleitung als Elemente
+  function tutorialNodes(tutorial) {
+    const list = document.createElement('ol');
     tutorial.steps.forEach((html) => {
       const item = document.createElement('li');
       item.innerHTML = html;              // nur die festen Texte von oben
-      steps.appendChild(item);
+      list.appendChild(item);
     });
+    const outro = document.createElement('p');
     outro.textContent = tutorial.outro;
+    return [list, outro];
+  }
+
+  // Oben: was auf diesem Gerät gilt. Darunter aufklappbar: die übrigen Geräte.
+  function show(intro, own) {
+    hint.textContent = intro;
+    $('install-tutorial').replaceChildren(...(own ? tutorialNodes(own) : []));
+
+    const others = $('other-tutorials');
+    others.replaceChildren();
+    others.hidden = !hosted;
+    if (!hosted) return;
+    const heading = document.createElement('h3');
+    heading.textContent = own ? 'Anleitungen für andere Geräte' : 'Anleitungen für alle Geräte';
+    others.appendChild(heading);
+    Object.values(TUTORIALS).filter((tutorial) => tutorial !== own).forEach((tutorial) => {
+      const details = document.createElement('details');
+      const summary = document.createElement('summary');
+      summary.textContent = tutorial.title;
+      details.append(summary, ...tutorialNodes(tutorial));
+      others.appendChild(details);
+    });
   }
 
   function refresh() {
@@ -109,7 +141,7 @@
     installButton.hidden = true;
     // Der Download ist für Windows und Mac gedacht. Die Einzeldatei baut nur
     // die Online-Seite; eine heruntergeladene Kopie kann sich nicht selbst lesen.
-    $('download-section').hidden = kind === 'ios' || kind === 'android';
+    $('download-section').hidden = isMobile();
     $('single-file').hidden = !hosted;
 
     if (isInstalled()) {
@@ -126,10 +158,57 @@
     } else if (tutorial) {
       show(tutorial.intro, tutorial);
     } else {
-      show('Dieser Browser kann keine Apps installieren. Öffne die Seite in Chrome oder Edge – ' +
+      show('Dieser Browser kann keine Apps installieren. Öffne die Seite in Chrome, Edge oder Safari – ' +
         'oder lade die Datei herunter.');
     }
+    refreshBanner();
   }
+
+  async function install() {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;                // jedes Angebot gilt nur einmal
+    refresh();
+  }
+
+  function openDialog() {
+    refresh();
+    dialog.showModal();
+  }
+
+  // ---------- Hinweis auf Handy und Tablet ----------
+
+  // Dort ist der Knopf „App“ leicht zu übersehen. Deshalb erscheint beim
+  // Besuch im Browser einmal ein Streifen, der direkt zur Installation führt.
+  function bannerDismissed() {
+    try {
+      return localStorage.getItem(BANNER_KEY) === 'zu';
+    } catch (err) {
+      return false;                      // Speicher gesperrt: Hinweis einfach zeigen
+    }
+  }
+
+  function refreshBanner() {
+    banner.hidden = !(hosted && isMobile() && !isInstalled() && !bannerDismissed());
+    $('banner-install').textContent = installPrompt ? 'Installieren' : 'So geht’s';
+  }
+
+  $('banner-install').addEventListener('click', () => {
+    if (installPrompt) install();
+    else openDialog();
+  });
+
+  $('banner-close').addEventListener('click', () => {
+    try {
+      localStorage.setItem(BANNER_KEY, 'zu');
+    } catch (err) {
+      // ohne Speicher erscheint der Hinweis beim nächsten Besuch wieder
+    }
+    banner.hidden = true;
+  });
+
+  // ---------- Installation ----------
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();                  // eigenen Knopf statt der Browser-Leiste
@@ -142,19 +221,8 @@
     refresh();
   });
 
-  installButton.addEventListener('click', async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    await installPrompt.userChoice;
-    installPrompt = null;                // jedes Angebot gilt nur einmal
-    refresh();
-  });
-
-  $('btn-app').addEventListener('click', () => {
-    refresh();
-    dialog.showModal();
-  });
-
+  installButton.addEventListener('click', install);
+  $('btn-app').addEventListener('click', openDialog);
   $('zip-link').href = ZIP_URL;
 
   // ---------- Einzeldatei ----------
@@ -208,6 +276,10 @@
     }
     button.disabled = false;
   });
+
+  // ---------- Start ----------
+
+  refreshBanner();
 
   if (hosted && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');

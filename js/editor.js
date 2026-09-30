@@ -257,7 +257,9 @@
     const shapes = group.find('.pylon');
     if (shapes.length < 2) return null;
     const path = pathOf(group).concat('teil-' + (++idCount));
-    const pointer = stage.getRelativePointerPosition();
+    // Ohne Zeiger auf der Arbeitsfläche (Figur nur angetippt und über die Leiste
+    // aufgelöst) zählt die Mitte der Figur.
+    const pointer = stage.getRelativePointerPosition() || group.position();
     const transform = group.getTransform();
     let nearest = null;
     let best = Infinity;
@@ -698,6 +700,7 @@
     const additive = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
     const element = elementAt(e.target);
     if (element) {
+      lastTapped = element;
       selectElement(element, additive);
     } else if (!additive) {
       scope = [];
@@ -708,15 +711,10 @@
   // Doppelklick: eine Ebene tiefer. Ganz unten wird die Pylonengruppe in
   // einzelne Pylonen aufgelöst, die sich dann einzeln verschieben/löschen lassen.
   let lastDrill = 0;
+  let lastTapped = null;                  // zuletzt angeklicktes Element, Ziel von „Einzeln“
 
-  stage.on('dblclick dbltap', (e) => {
-    const element = elementAt(e.target);
-    if (!element) return;
-    // Konva meldet bei schnellem Weiterklicken jeden Klick als Doppelklick;
-    // ein Dreifachklick soll aber nicht gleich zwei Ebenen tiefer gehen.
-    const now = performance.now();
-    if (now - lastDrill < Konva.dblClickWindow) return;
-    lastDrill = now;
+  // Geht von diesem Element aus eine Ebene tiefer.
+  function drill(element) {
     const path = pathOf(element);
     const depth = enteredDepth(path);
     if (depth < path.length) {
@@ -726,10 +724,64 @@
     }
     const pylon = explode(element);
     if (pylon) {
+      lastTapped = pylon;
       scope = pathOf(pylon);
       setSelection([pylon]);
       commit();
     }
+  }
+
+  const canDrill = (element) =>
+    enteredDepth(pathOf(element)) < pathOf(element).length || element.find('.pylon').length > 1;
+
+  // Ziel des Knopfs „Einzeln“: das zuletzt angetippte Element der Auswahl
+  const drillTarget = () =>
+    (lastTapped && selection.includes(lastTapped) ? lastTapped : selection[0]);
+
+  // ---------- Beschriftung (Sperrfläche) ----------
+
+  const textDialog = $('text-dialog');
+  let textTarget = null;
+
+  // Das einzeln gewählte Element, falls es sich beschriften lässt
+  const textElement = () =>
+    (selection.length === 1 && defOf(selection[0]).editableText ? selection[0] : null);
+
+  function editText(node) {
+    textTarget = node;
+    $('text-input').value = node.getAttr('options').text || '';
+    textDialog.showModal();
+    $('text-input').select();
+  }
+
+  // „Übernehmen“ ist der einzige Absende-Knopf, damit die Eingabetaste übernimmt.
+  $('text-cancel').addEventListener('click', () => textDialog.close());
+
+  // Übernommen wird beim Absenden des Formulars; es schließt das Fenster selbst.
+  // (Auf das close-Ereignis ist nach einem Abbrechen nicht immer Verlass.)
+  textDialog.querySelector('form').addEventListener('submit', () => {
+    const node = textTarget;
+    if (!node || !node.getLayer()) return;
+    const size = node.getAttr('boxSize');
+    node.getAttr('options').text = $('text-input').value.trim();
+    KP.setElementSize(node, size.width, size.height);
+    commit();
+  });
+
+  stage.on('dblclick dbltap', (e) => {
+    const element = elementAt(e.target);
+    if (!element) return;
+    // Konva meldet bei schnellem Weiterklicken jeden Klick als Doppelklick;
+    // ein Dreifachklick soll aber nicht gleich zwei Ebenen tiefer gehen.
+    const now = performance.now();
+    if (now - lastDrill < Konva.dblClickWindow) return;
+    lastDrill = now;
+    if (defOf(element).editableText && !canDrill(element)) {
+      setSelection([element]);
+      editText(element);
+      return;
+    }
+    drill(element);
   });
 
   stage.on('wheel', (e) => {
@@ -838,12 +890,22 @@
 
   // ---------- Kontextmenü (Rechtsklick oder langes Drücken auf ein Element) ----------
 
+  // Aktionen für die Auswahl – im Kontextmenü und in der Leiste für Fingerbedienung
+  const actions = {
+    'rotate-left': () => rotateSelection(-ROTATE_STEP),
+    'rotate-right': () => rotateSelection(ROTATE_STEP),
+    mirror: mirrorSelection,
+    'flip-arrows': flipArrows,
+    drill: () => drill(drillTarget()),
+    text: () => editText(textElement()),
+    delete: deleteSelection
+  };
   const menu = $('context-menu');
-  const menuActions = { 'flip-arrows': flipArrows, delete: deleteSelection };
 
   function openMenu(element, clientX, clientY) {
     if (!selection.includes(element)) selectElement(element, false);
     menu.querySelector('[data-action="flip-arrows"]').disabled = arrowsInSelection().length === 0;
+    menu.querySelector('[data-action="text"]').hidden = !textElement();
     menu.hidden = false;
     menu.style.left = Math.min(clientX, window.innerWidth - menu.offsetWidth - 4) + 'px';
     menu.style.top = Math.min(clientY, window.innerHeight - menu.offsetHeight - 4) + 'px';
@@ -854,10 +916,15 @@
   }
 
   menu.addEventListener('click', (e) => {
-    const action = menuActions[e.target.dataset.action];
+    const action = actions[e.target.dataset.action];
     if (!action) return;
-    action();
     closeMenu();
+    action();
+  });
+
+  $('selection-bar').addEventListener('click', (e) => {
+    const action = actions[e.target.dataset.action];
+    if (action && selection.length) action();
   });
   menu.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('pointerdown', (e) => {
@@ -1021,6 +1088,11 @@
     ['btn-rotate-left', 'btn-rotate-right', 'btn-mirror', 'btn-delete'].forEach((id) => {
       $(id).disabled = selection.length === 0;
     });
+    const bar = $('selection-bar');
+    bar.hidden = selection.length === 0;
+    bar.querySelector('[data-action="flip-arrows"]').disabled = arrowsInSelection().length === 0;
+    bar.querySelector('[data-action="drill"]').disabled = !selection.length || !canDrill(drillTarget());
+    bar.querySelector('[data-action="text"]').hidden = !textElement();
     $('btn-undo').disabled = history.index <= 0;
     $('btn-redo').disabled = history.index >= history.stack.length - 1;
     document.title = (isDirty() ? '• ' : '') + TITLE;
@@ -1066,6 +1138,18 @@
   $('btn-fit').addEventListener('click', fitView);
 
   $('btn-help').addEventListener('click', () => $('help-dialog').showModal());
+
+  // Handy: die übrigen Gruppen der Menüleiste klappen hinter dem Menüknopf auf.
+  const menubar = document.querySelector('.menubar');
+  $('btn-menu').addEventListener('click', () => menubar.classList.toggle('open'));
+  window.addEventListener('pointerdown', (e) => {
+    if (!menubar.contains(e.target)) menubar.classList.remove('open');
+  }, true);
+  // Nach Öffnen, Speichern, PDF, App und Einpassen schließt das Menü wieder;
+  // bei Zoom und Eingabefeldern bleibt es offen.
+  $('menu-more').addEventListener('click', (e) => {
+    if (e.target.closest('.group-file button, #btn-fit')) menubar.classList.remove('open');
+  });
 
   // Fenster (Hilfe, App): ein Klick daneben schließt sie.
   document.querySelectorAll('dialog').forEach((dialog) => {
