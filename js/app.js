@@ -12,7 +12,6 @@
   'use strict';
 
   const ZIP_URL = 'https://github.com/D00ani/BKC_Strecken_Planer/archive/refs/heads/main.zip';
-  const BANNER_KEY = 'kurs-planer-install-hinweis';
   // „Teilen“-Symbol von Safari, damit man es in der Leiste wiedererkennt
   const SHARE_ICON = '<svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true">' +
     '<path d="M12 15V3M8 7l4-4 4 4M7 10H5v11h14V10h-2" fill="none" stroke="currentColor" ' +
@@ -22,7 +21,6 @@
   const dialog = $('app-dialog');
   const installButton = $('btn-install');
   const hint = $('install-hint');
-  const banner = $('install-banner');
   const hosted = location.protocol === 'https:' || location.protocol === 'http:';
   let installPrompt = null;              // vom Browser angebotene Installation
 
@@ -161,7 +159,6 @@
       show('Dieser Browser kann keine Apps installieren. Öffne die Seite in Chrome, Edge oder Safari – ' +
         'oder lade die Datei herunter.');
     }
-    refreshBanner();
   }
 
   async function install() {
@@ -176,37 +173,6 @@
     refresh();
     dialog.showModal();
   }
-
-  // ---------- Hinweis auf Handy und Tablet ----------
-
-  // Dort ist der Knopf „App“ leicht zu übersehen. Deshalb erscheint beim
-  // Besuch im Browser einmal ein Streifen, der direkt zur Installation führt.
-  function bannerDismissed() {
-    try {
-      return localStorage.getItem(BANNER_KEY) === 'zu';
-    } catch (err) {
-      return false;                      // Speicher gesperrt: Hinweis einfach zeigen
-    }
-  }
-
-  function refreshBanner() {
-    banner.hidden = !(hosted && isMobile() && !isInstalled() && !bannerDismissed());
-    $('banner-install').textContent = installPrompt ? 'Installieren' : 'So geht’s';
-  }
-
-  $('banner-install').addEventListener('click', () => {
-    if (installPrompt) install();
-    else openDialog();
-  });
-
-  $('banner-close').addEventListener('click', () => {
-    try {
-      localStorage.setItem(BANNER_KEY, 'zu');
-    } catch (err) {
-      // ohne Speicher erscheint der Hinweis beim nächsten Besuch wieder
-    }
-    banner.hidden = true;
-  });
 
   // ---------- Installation ----------
 
@@ -278,8 +244,6 @@
   });
 
   // ---------- Start ----------
-
-  refreshBanner();
 
   if (hosted && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');

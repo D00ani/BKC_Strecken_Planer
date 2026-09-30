@@ -13,29 +13,25 @@
 <body>
 
   <header class="menubar">
-    <!-- Die Reihenfolge am großen Bildschirm regelt das Stylesheet (order). Auf dem
-         Handy klappt „menu-more“ hinter dem Menüknopf auf. -->
-    <button id="btn-menu" type="button" class="menu-toggle" title="Menü" aria-label="Menü">☰</button>
     <span class="app-title">Kurs-Planer</span>
 
-    <div class="tool-group group-undo">
-      <button id="btn-undo" type="button" title="Rückgängig (Strg/Cmd+Z)" aria-label="Rückgängig">↶<span class="btn-text"> Zurück</span></button>
-      <button id="btn-redo" type="button" title="Wiederholen (Strg+Y, Cmd+Umschalt+Z)" aria-label="Wiederholen">↷<span class="btn-text"> Vor</span></button>
-    </div>
-
-    <div class="tool-group group-edit">
-      <button id="btn-rotate-left" type="button" title="15° gegen den Uhrzeigersinn drehen (Umschalt+R)">↺ Drehen</button>
-      <button id="btn-rotate-right" type="button" title="15° im Uhrzeigersinn drehen (R)">↻ Drehen</button>
-      <button id="btn-mirror" type="button" title="Auswahl spiegeln (M)">Spiegeln</button>
-      <button id="btn-delete" type="button" title="Auswahl löschen (Entf)">Löschen</button>
-    </div>
-
-    <div id="menu-more" class="menubar-more">
-    <div class="tool-group group-file">
+    <div class="tool-group">
       <button id="btn-open" type="button" title="Gespeicherten Streckenplan öffnen (Strg/Cmd+O)">Öffnen</button>
       <button id="btn-save" type="button" title="Streckenplan als Datei speichern (Strg/Cmd+S)">Speichern</button>
       <button id="btn-export" type="button" title="Streckenplan als PDF speichern (DIN A4)">PDF</button>
       <button id="btn-app" type="button" title="Als App installieren oder herunterladen – läuft dann ohne Internet">App</button>
+    </div>
+
+    <div class="tool-group">
+      <button id="btn-undo" type="button" title="Rückgängig (Strg/Cmd+Z)">↶ Zurück</button>
+      <button id="btn-redo" type="button" title="Wiederholen (Strg+Y, Cmd+Umschalt+Z)">↷ Vor</button>
+    </div>
+
+    <div class="tool-group">
+      <button id="btn-rotate-left" type="button" title="15° gegen den Uhrzeigersinn drehen (Umschalt+R)">↺ Drehen</button>
+      <button id="btn-rotate-right" type="button" title="15° im Uhrzeigersinn drehen (R)">↻ Drehen</button>
+      <button id="btn-mirror" type="button" title="Auswahl spiegeln (M)">Spiegeln</button>
+      <button id="btn-delete" type="button" title="Auswahl löschen (Entf)">Löschen</button>
     </div>
 
     <div class="tool-group">
@@ -73,18 +69,11 @@
              title="Fahrspurbreite der Figuren = Spurbreite + 40 cm. Gilt für neu platzierte Figuren.">
       <span>m</span>
     </div>
-    </div>
 
     <div class="tool-group tool-help">
       <button id="btn-help" type="button" title="Hilfe und Tastenkürzel" aria-label="Hilfe">?</button>
     </div>
   </header>
-
-  <div id="install-banner" class="install-banner" hidden>
-    <span>Als App auf dem Home-Bildschirm läuft der Kurs-Planer ohne Internet.</span>
-    <button id="banner-install" type="button" class="primary">So geht’s</button>
-    <button id="banner-close" type="button" aria-label="Hinweis schließen">✕</button>
-  </div>
 
   <div class="workspace">
     <aside class="toolbox">
@@ -93,17 +82,6 @@
 
     <main class="canvas-wrap">
       <div id="stage"></div>
-
-      <!-- Aktionen für die Auswahl in Fingergröße (Handy, Tablet) -->
-      <div id="selection-bar" class="selection-bar" hidden>
-        <button type="button" data-action="rotate-left" title="15° gegen den Uhrzeigersinn drehen" aria-label="Nach links drehen">↺</button>
-        <button type="button" data-action="rotate-right" title="15° im Uhrzeigersinn drehen" aria-label="Nach rechts drehen">↻</button>
-        <button type="button" data-action="mirror">Spiegeln</button>
-        <button type="button" data-action="flip-arrows" title="Fahrtrichtung der Pfeile umkehren">Pfeile ⇄</button>
-        <button type="button" data-action="drill" title="Eine Ebene tiefer: ein Teil der Figur, dann die einzelne Pylone">Einzeln</button>
-        <button type="button" data-action="text" title="Beschriftung ändern" hidden>Text</button>
-        <button type="button" data-action="delete">Löschen</button>
-      </div>
     </main>
   </div>
 
@@ -133,8 +111,7 @@
       <li><strong>Klick</strong> wählt die ganze Figur samt Pfeilen.</li>
       <li><strong>Doppelklick</strong> geht eine Ebene tiefer: erst das Teil (Gasse, Pfeil, Pylonengruppe), dann die einzelne Pylone – zum Verschieben oder Löschen.</li>
       <li><strong>Rechtsklick</strong> (Touch: lange drücken) öffnet das Menü mit „Pfeile spiegeln“, „Text ändern“ und „Löschen“.</li>
-      <li>Sperrfläche beschriften: Doppelklick auf die Fläche, dann den Text eingeben (z. B. den Namen des Gebäudes).</li>
-      <li>Auf Handy und Tablet erscheint bei einer Auswahl unten eine Leiste mit Drehen, Spiegeln, „Pfeile ⇄“, „Einzeln“ (wie Doppelklick), „Text“ und Löschen.</li>
+      <li>Sperrfläche beschriften: Doppelklick auf die Fläche (Touch: doppelt tippen oder lange drücken → „Text ändern“), dann den Text eingeben, z. B. den Namen des Gebäudes.</li>
       <li>Beim Verschieben zeigen Hilfslinien, wenn Elemente in einer Flucht liegen.</li>
     </ul>
 

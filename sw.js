@@ -1,11 +1,17 @@
 /*
  * Service Worker: hält alle Dateien des Programms auf dem Gerät vor, damit die
- * installierte App ohne Internet startet. Antwortet sofort aus dem Vorrat und
- * holt im Hintergrund die aktuelle Fassung – sie gilt ab dem nächsten Start.
+ * installierte App ohne Internet startet.
+ *
+ * Mit Netz kommt jede Datei frisch vom Server (der Browser-Zwischenspeicher
+ * wird dabei übergangen) und der Vorrat wird aufgefrischt. So passen Seite,
+ * Gestaltung und Skripte nach einem Update immer zusammen – eine Mischung aus
+ * altem und neuem Stand zerlegt die Oberfläche. Nur ohne Netz, oder wenn der
+ * Server nach drei Sekunden nicht geantwortet hat, springt der Vorrat ein.
  *
  * Kommt eine Datei dazu, hier eintragen und CACHE hochzählen.
  */
-const CACHE = 'kurs-planer-v1';
+const CACHE = 'kurs-planer-v2';
+const TIMEOUT = 3000;                    // Millisekunden bis zum Rückgriff auf den Vorrat
 const FILES = [
   './',
   'index.html',
@@ -28,7 +34,9 @@ const FILES = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(FILES)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(FILES.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -47,15 +55,14 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(request, { ignoreSearch: true });
-      const fresh = fetch(request)
-        .then((response) => {
-          if (response.ok) cache.put(request, response.clone());
-          return response;
-        })
-        .catch(() => cached || Response.error());
+      const fresh = fetch(request.url, { cache: 'no-cache' }).then((response) => {
+        if (response.ok) cache.put(request, response.clone());
+        return response;
+      });
       if (!cached) return fresh;
-      event.waitUntil(fresh);             // im Hintergrund aktualisieren
-      return cached;
+      event.waitUntil(fresh.catch(() => {}));       // Vorrat auch nach dem Rückgriff auffrischen
+      const fallback = new Promise((resolve) => setTimeout(() => resolve(cached), TIMEOUT));
+      return Promise.race([fresh.catch(() => cached), fallback]);
     })
   );
 });

@@ -700,7 +700,6 @@
     const additive = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
     const element = elementAt(e.target);
     if (element) {
-      lastTapped = element;
       selectElement(element, additive);
     } else if (!additive) {
       scope = [];
@@ -711,7 +710,6 @@
   // Doppelklick: eine Ebene tiefer. Ganz unten wird die Pylonengruppe in
   // einzelne Pylonen aufgelöst, die sich dann einzeln verschieben/löschen lassen.
   let lastDrill = 0;
-  let lastTapped = null;                  // zuletzt angeklicktes Element, Ziel von „Einzeln“
 
   // Geht von diesem Element aus eine Ebene tiefer.
   function drill(element) {
@@ -724,7 +722,6 @@
     }
     const pylon = explode(element);
     if (pylon) {
-      lastTapped = pylon;
       scope = pathOf(pylon);
       setSelection([pylon]);
       commit();
@@ -733,10 +730,6 @@
 
   const canDrill = (element) =>
     enteredDepth(pathOf(element)) < pathOf(element).length || element.find('.pylon').length > 1;
-
-  // Ziel des Knopfs „Einzeln“: das zuletzt angetippte Element der Auswahl
-  const drillTarget = () =>
-    (lastTapped && selection.includes(lastTapped) ? lastTapped : selection[0]);
 
   // ---------- Beschriftung (Sperrfläche) ----------
 
@@ -890,17 +883,12 @@
 
   // ---------- Kontextmenü (Rechtsklick oder langes Drücken auf ein Element) ----------
 
-  // Aktionen für die Auswahl – im Kontextmenü und in der Leiste für Fingerbedienung
+  const menu = $('context-menu');
   const actions = {
-    'rotate-left': () => rotateSelection(-ROTATE_STEP),
-    'rotate-right': () => rotateSelection(ROTATE_STEP),
-    mirror: mirrorSelection,
     'flip-arrows': flipArrows,
-    drill: () => drill(drillTarget()),
     text: () => editText(textElement()),
     delete: deleteSelection
   };
-  const menu = $('context-menu');
 
   function openMenu(element, clientX, clientY) {
     if (!selection.includes(element)) selectElement(element, false);
@@ -922,10 +910,6 @@
     action();
   });
 
-  $('selection-bar').addEventListener('click', (e) => {
-    const action = actions[e.target.dataset.action];
-    if (action && selection.length) action();
-  });
   menu.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('pointerdown', (e) => {
     if (!menu.contains(e.target)) closeMenu();
@@ -1088,11 +1072,6 @@
     ['btn-rotate-left', 'btn-rotate-right', 'btn-mirror', 'btn-delete'].forEach((id) => {
       $(id).disabled = selection.length === 0;
     });
-    const bar = $('selection-bar');
-    bar.hidden = selection.length === 0;
-    bar.querySelector('[data-action="flip-arrows"]').disabled = arrowsInSelection().length === 0;
-    bar.querySelector('[data-action="drill"]').disabled = !selection.length || !canDrill(drillTarget());
-    bar.querySelector('[data-action="text"]').hidden = !textElement();
     $('btn-undo').disabled = history.index <= 0;
     $('btn-redo').disabled = history.index >= history.stack.length - 1;
     document.title = (isDirty() ? '• ' : '') + TITLE;
@@ -1139,17 +1118,6 @@
 
   $('btn-help').addEventListener('click', () => $('help-dialog').showModal());
 
-  // Handy: die übrigen Gruppen der Menüleiste klappen hinter dem Menüknopf auf.
-  const menubar = document.querySelector('.menubar');
-  $('btn-menu').addEventListener('click', () => menubar.classList.toggle('open'));
-  window.addEventListener('pointerdown', (e) => {
-    if (!menubar.contains(e.target)) menubar.classList.remove('open');
-  }, true);
-  // Nach Öffnen, Speichern, PDF, App und Einpassen schließt das Menü wieder;
-  // bei Zoom und Eingabefeldern bleibt es offen.
-  $('menu-more').addEventListener('click', (e) => {
-    if (e.target.closest('.group-file button, #btn-fit')) menubar.classList.remove('open');
-  });
 
   // Fenster (Hilfe, App): ein Klick daneben schließt sie.
   document.querySelectorAll('dialog').forEach((dialog) => {
